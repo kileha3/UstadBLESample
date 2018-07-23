@@ -25,7 +25,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static android.content.Context.BLUETOOTH_SERVICE;
-public class BluetoothManagerSharedAndroidImpl extends BluetoothManagerShared implements BluetoothAdapter.LeScanCallback{
+public class BluetoothManagerSharedAndroid extends BluetoothManagerShared implements BluetoothAdapter.LeScanCallback{
 
 
   private Activity mActivity;
@@ -47,7 +47,7 @@ public class BluetoothManagerSharedAndroidImpl extends BluetoothManagerShared im
 
   private int packetIteration = 0;
 
-  public BluetoothManagerSharedAndroidImpl(Activity mActivity){
+  public BluetoothManagerSharedAndroid(Activity mActivity){
     this.mActivity = mActivity;
     this.mBluetoothManager = (BluetoothManager) mActivity.getSystemService(BLUETOOTH_SERVICE);
     this.mBluetoothAdapter = mBluetoothManager.getAdapter();
