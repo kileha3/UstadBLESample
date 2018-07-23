@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity"
+    >
+
+  <Button
+      android:id="@+id/btn_start_server"
+      android:layout_margin="16dp"
+      android:text="START SERVER"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      />
+
+  <Button
+      android:layout_below="@+id/btn_start_server"
+      android:id="@+id/btn_start_client"
+      android:layout_margin="16dp"
+      android:text="START CLIENT"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      />
+
+
+  <Button
+      android:visibility="gone"
+      android:layout_below="@+id/btn_start_client"
+      android:id="@+id/btn_start_connection"
+      android:layout_margin="16dp"
+      android:text="CONNECT NOW"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      />
+
+  <Button
+      android:visibility="gone"
+      android:layout_alignParentBottom="true"
+      android:id="@+id/btn_end_connection"
+      android:layout_margin="16dp"
+      android:text="DISCONNECT"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      />
+
+  <Button
+      android:visibility="gone"
+      android:layout_above="@+id/btn_end_connection"
+      android:id="@+id/btn_send_message"
+      android:layout_margin="16dp"
+      android:text="SEND MESSAGE"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      />
+
+
+
+
+</RelativeLayout>
