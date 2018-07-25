@@ -16,11 +16,13 @@ import android.bluetooth.le.BluetoothLeAdvertiser;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.ParcelUuid;
+import android.util.Log;
 import com.furahitechstudio.ustadsample.callbacks.GattClientCallback;
 import com.furahitechstudio.ustadsample.callbacks.GattServerCallback;
 import com.furahitechstudio.ustadsample.models.NetworkNode;
 import com.furahitechstudio.ustadsample.utils.BleAndroidUtils;
 import com.furahitechstudio.ustadsample.utils.LogWrapper;
+import java.io.ByteArrayOutputStream;
 import java.util.List;
 import java.util.UUID;
 
@@ -45,7 +47,14 @@ public class BluetoothManagerSharedAndroid extends BluetoothManagerShared implem
 
   private GattClientCallback mGattClientCallback;
 
-  private int packetIteration = 0;
+  private boolean isWaitingForExtraPackets = false;
+
+  private int contentLength = 0;
+
+  private byte currentRequestType;
+
+  private ByteArrayOutputStream outputStream = null;
+
 
   public BluetoothManagerSharedAndroid(Activity mActivity){
     this.mActivity = mActivity;
@@ -153,7 +162,7 @@ public class BluetoothManagerSharedAndroid extends BluetoothManagerShared implem
       return;
     }
 
-    Integer payloadSize = BleAndroidUtils.depacketizePayload(getPayload()).length;
+    Integer payloadSize = BleAndroidUtils.depacketizePayload(getPayload(ENTRY_STATUS_REQUEST)).length;
     characteristic.setValue(payloadSize.toString().getBytes());
     boolean success = mGatt.writeCharacteristic(characteristic);
     boolean execute = mGatt.executeReliableWrite();
@@ -165,21 +174,21 @@ public class BluetoothManagerSharedAndroid extends BluetoothManagerShared implem
   }
 
   @Override
-  public void sendCourseStatuses(String courseResult) {
+  public void sendCourseStatuses(NetworkNode networkNode,String courseResult) {
     setDataToTransfer(courseResult);
     BluetoothGattService service = mGattServer.getService(SERVICE_UUID);
     BluetoothGattCharacteristic characteristic = service.getCharacteristic(SERVICE_UUID);
-    for (NetworkNode networkNode : getConnectedNodes()) {
-      /*if(packetIteration < getPacketSize()){
-        characteristic.setValue(getBytesToSend()[packetIteration]);
-        boolean isConfirmationRequired = BleAndroidUtils.requiresConfirmation(characteristic);
-        BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(networkNode.getBluetoothAddress());
-        if (isResponseEnabled(device, characteristic)) {
-          mGattServer.notifyCharacteristicChanged(device, characteristic, isConfirmationRequired);
-        }
-        packetIteration++;
-      }*/
+    int payloadLength = getPayload(ENTRY_STATUS_RESPONSE).length;
+    BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(networkNode.getBluetoothAddress());
+    boolean isConfirmationRequired = BleAndroidUtils.requiresConfirmation(characteristic);
+
+    for(int packetIteration = 0; packetIteration < payloadLength; packetIteration++){
+      characteristic.setValue(getPayload(ENTRY_STATUS_RESPONSE)[packetIteration]);
+      if (isResponseEnabled(device, characteristic)) {
+        mGattServer.notifyCharacteristicChanged(device, characteristic, isConfirmationRequired);
+      }
     }
+
   }
 
 
@@ -189,6 +198,49 @@ public class BluetoothManagerSharedAndroid extends BluetoothManagerShared implem
       byte[] value) {
     mGattServer.sendResponse(mBluetoothAdapter.getRemoteDevice(networkNode.getBluetoothAddress()),
         requestId, status, 0, null);
+  }
+
+  @Override public void processPackets(NetworkNode networkNode, byte[] value) {
+    byte clientRequest = BleAndroidUtils.getRequestType(value);
+    byte [] actualPayLoad = null;
+    if(ENTRY_STATUS_REQUEST == clientRequest || ENTRY_STATUS_RESPONSE == clientRequest){
+      LogWrapper.log(false, "Requesting received");
+      outputStream = new ByteArrayOutputStream();
+      isWaitingForExtraPackets = true;
+      currentRequestType = clientRequest;
+      contentLength = BleAndroidUtils.getContentLength(value);
+    }
+
+
+    if(isWaitingForExtraPackets && outputStream!=null){
+      outputStream.write(value, 0, value.length);
+      actualPayLoad = BleAndroidUtils.getActualPayLoad(outputStream.toByteArray());
+      LogWrapper.log(false, "Content-Length: "+contentLength+" Payload-Length: "+actualPayLoad.length);
+    }
+
+
+    if(outputStream !=null && actualPayLoad != null){
+
+      if(contentLength == actualPayLoad.length){
+        switch (currentRequestType){
+          case ENTRY_STATUS_REQUEST:
+            LogWrapper.log(false,"Entry status request completed:\n"+BleAndroidUtils.decompress(actualPayLoad));
+            String [] entryIds = BleAndroidUtils.decompress(actualPayLoad).split(",");
+            StringBuilder stringBuilder = new StringBuilder();
+            for (String entryId : entryIds) {
+              stringBuilder.append("T");
+            }
+            sendCourseStatuses(networkNode,stringBuilder.toString());
+            break;
+
+          case ENTRY_STATUS_RESPONSE:
+            LogWrapper.log(false,"Entry status response received\n"+BleAndroidUtils.decompress(actualPayLoad));
+            break;
+        }
+
+      }
+    }
+
   }
 
   @Override public void disconnectServer() {
