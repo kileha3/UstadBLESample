@@ -16,7 +16,6 @@ import android.bluetooth.le.BluetoothLeAdvertiser;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.ParcelUuid;
-import android.util.Log;
 import com.furahitechstudio.ustadsample.callbacks.GattClientCallback;
 import com.furahitechstudio.ustadsample.callbacks.GattServerCallback;
 import com.furahitechstudio.ustadsample.models.NetworkNode;

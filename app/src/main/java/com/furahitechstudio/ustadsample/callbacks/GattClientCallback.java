@@ -136,7 +136,6 @@ public class GattClientCallback extends BluetoothGattCallback {
     }
   }
 
-
   private void readCharacteristic(NetworkNode networkNode,BluetoothGattCharacteristic characteristic) {
     bluetoothManager.processPackets(networkNode,characteristic.getValue());
 

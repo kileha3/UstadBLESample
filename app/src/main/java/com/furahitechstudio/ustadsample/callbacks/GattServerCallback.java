@@ -7,22 +7,15 @@ import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattServerCallback;
 import android.bluetooth.BluetoothProfile;
 import com.furahitechstudio.ustadsample.manager.BluetoothManagerShared;
-import com.furahitechstudio.ustadsample.models.NetworkNode;
 import com.furahitechstudio.ustadsample.utils.BleAndroidUtils;
 import com.furahitechstudio.ustadsample.utils.LogWrapper;
-import java.io.ByteArrayOutputStream;
 
 import static com.furahitechstudio.ustadsample.manager.BluetoothManagerShared.CLIENT_CONFIGURATION_DESCRIPTOR_UUID;
-import static com.furahitechstudio.ustadsample.manager.BluetoothManagerShared.ENTRY_STATUS_REQUEST;
-import static com.furahitechstudio.ustadsample.manager.BluetoothManagerShared.ENTRY_STATUS_RESPONSE;
 import static com.furahitechstudio.ustadsample.manager.BluetoothManagerShared.SERVICE_UUID;
 
 public class GattServerCallback extends BluetoothGattServerCallback {
 
-
   private BluetoothManagerShared bluetoothManager;
-
-
 
   public GattServerCallback(BluetoothManagerShared bluetoothManager) {
     this.bluetoothManager = bluetoothManager;

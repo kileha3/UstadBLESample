@@ -60,8 +60,6 @@ public abstract class BluetoothManagerShared {
    return BleAndroidUtils.packetizePayload(requestStatus,compress(dataToTransfer),20);
  }
 
-
-
   public void addNodeConfiguration(NetworkNode networkNode, byte[] value){
     mNetworkNodeConfigurations.put(networkNode.getBluetoothAddress(),value);
   }
@@ -100,7 +98,6 @@ public abstract class BluetoothManagerShared {
   public Map<String, byte[]> getNodeConfigurations(){
     return mNetworkNodeConfigurations;
   }
-
 
   public abstract void destroy();
 }
