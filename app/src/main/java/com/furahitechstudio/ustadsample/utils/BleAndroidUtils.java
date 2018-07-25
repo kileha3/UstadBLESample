@@ -108,7 +108,7 @@ public class BleAndroidUtils {
 
   public static byte [] getActualPayLoad(byte [] payload){
     if(payload != null){
-      return ByteBuffer.wrap(Arrays.copyOfRange(payload, 6, payload.length)).array();
+      return ByteBuffer.wrap(Arrays.copyOfRange(payload, 5, payload.length)).array();
     }
 
     return new byte[]{};
