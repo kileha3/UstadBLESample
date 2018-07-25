@@ -9,10 +9,10 @@ import android.bluetooth.BluetoothProfile;
 import com.furahitechstudio.ustadsample.manager.BluetoothManagerShared;
 import com.furahitechstudio.ustadsample.utils.BleAndroidUtils;
 import com.furahitechstudio.ustadsample.utils.LogWrapper;
+import java.io.ByteArrayOutputStream;
 
 import static com.furahitechstudio.ustadsample.manager.BluetoothManagerShared.CLIENT_CONFIGURATION_DESCRIPTOR_UUID;
-import static com.furahitechstudio.ustadsample.manager.BluetoothManagerShared.DATA_SEGMENT_END;
-import static com.furahitechstudio.ustadsample.manager.BluetoothManagerShared.DATA_SEGMENT_START;
+import static com.furahitechstudio.ustadsample.manager.BluetoothManagerShared.ENTRY_STATUS_REQUEST;
 import static com.furahitechstudio.ustadsample.manager.BluetoothManagerShared.SERVICE_UUID;
 
 public class GattServerCallback extends BluetoothGattServerCallback {
@@ -20,7 +20,11 @@ public class GattServerCallback extends BluetoothGattServerCallback {
 
   private BluetoothManagerShared bluetoothManager;
 
-  private boolean isWaitingForPackets = false;
+  private boolean isWaitingForExtraPackets = false;
+
+  private int contentLength = 0;
+
+  private ByteArrayOutputStream outputStream = null;
 
   public GattServerCallback(BluetoothManagerShared bluetoothManager) {
     this.bluetoothManager = bluetoothManager;
@@ -59,29 +63,40 @@ public class GattServerCallback extends BluetoothGattServerCallback {
         responseNeeded, offset, value);
 
     LogWrapper.log(false, "onCharacteristicWriteRequest for "+characteristic.getUuid().toString());
-    String receivedSegment = BleAndroidUtils.stringFromBytes(value);
-
     if (SERVICE_UUID.equals(characteristic.getUuid())) {
-      LogWrapper.log(false, "Segment "+receivedSegment);
       bluetoothManager.acknowledgeRequest(BleAndroidUtils.getNetworkNode(device), requestId, BluetoothGatt.GATT_SUCCESS, 0, null);
-
-      if(receivedSegment !=null){
-        if(receivedSegment.contains(DATA_SEGMENT_START) ){
-          isWaitingForPackets = true;
-        }
-
-        if(isWaitingForPackets){
-          bluetoothManager.storeReceivedSegment(receivedSegment);
-        }
-
-        if(receivedSegment.contains(DATA_SEGMENT_END)){
-          String response = DATA_SEGMENT_START+bluetoothManager.getCombinedReceivedSegments()+DATA_SEGMENT_END;
-          bluetoothManager.sendCourseStatuses(response);
-          LogWrapper.log(false, "Received Request:"+bluetoothManager.getCombinedReceivedSegments());
-        }
-      }
-
+      processPackets(value);
     }
+  }
+
+
+  private void processPackets(byte [] value){
+    byte clientRequest = BleAndroidUtils.getRequestType(value);
+    byte [] actualPayLoad = null;
+    if(ENTRY_STATUS_REQUEST == clientRequest){
+      LogWrapper.log(false, "Requesting course status");
+      outputStream = new ByteArrayOutputStream();
+      isWaitingForExtraPackets = true;
+      contentLength = BleAndroidUtils.getContentLength(value);
+    }
+
+
+    if(isWaitingForExtraPackets && outputStream!=null){
+      outputStream.write(value, 0, value.length);
+      actualPayLoad = BleAndroidUtils.getActualPayLoad(outputStream.toByteArray());
+    }
+
+    if(outputStream !=null){
+      LogWrapper.log(false, "Waiting "+ isWaitingForExtraPackets +" Request "+clientRequest
+          +" Length "+contentLength+" Payload: "+actualPayLoad.length);
+
+      if(contentLength == actualPayLoad.length){
+        LogWrapper.log(false,"Transfer completed\n"
+            +BleAndroidUtils.decompress(actualPayLoad));
+      }
+    }
+
+
   }
 
 
