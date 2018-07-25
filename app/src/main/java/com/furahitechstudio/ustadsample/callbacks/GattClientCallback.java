@@ -6,10 +6,12 @@ import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothProfile;
 import com.furahitechstudio.ustadsample.manager.BluetoothManagerShared;
+import com.furahitechstudio.ustadsample.models.NetworkNode;
 import com.furahitechstudio.ustadsample.utils.BleAndroidUtils;
 import com.furahitechstudio.ustadsample.utils.LogWrapper;
 import java.util.List;
 
+import static com.furahitechstudio.ustadsample.manager.BluetoothManagerShared.ENTRY_STATUS_REQUEST;
 
 public class GattClientCallback extends BluetoothGattCallback {
 
@@ -78,7 +80,7 @@ public class GattClientCallback extends BluetoothGattCallback {
   public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
     super.onCharacteristicWrite(gatt, characteristic, status);
     if (status == BluetoothGatt.GATT_SUCCESS) {
-      byte[][] payload = bluetoothManager.getPayload();
+      byte[][] payload = bluetoothManager.getPayload(ENTRY_STATUS_REQUEST);
       if(packetIteration < payload.length){
         characteristic.setValue(payload[packetIteration]);
         gatt.writeCharacteristic(characteristic);
@@ -96,7 +98,8 @@ public class GattClientCallback extends BluetoothGattCallback {
     super.onCharacteristicRead(gatt, characteristic, status);
     if (status == BluetoothGatt.GATT_SUCCESS) {
       LogWrapper.log(true,"Characteristic read successfully");
-      readCharacteristic(characteristic);
+      NetworkNode networkNode = BleAndroidUtils.getNetworkNode(gatt.getDevice());
+      readCharacteristic(networkNode,characteristic);
     } else {
       LogWrapper.log(true,"Characteristic read unsuccessful, status: " + status);
     }
@@ -106,7 +109,8 @@ public class GattClientCallback extends BluetoothGattCallback {
   public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
     super.onCharacteristicChanged(gatt, characteristic);
     LogWrapper.log(false,"Characteristic modified, " + characteristic.getUuid().toString());
-    readCharacteristic(characteristic);
+    NetworkNode networkNode = BleAndroidUtils.getNetworkNode(gatt.getDevice());
+    readCharacteristic(networkNode,characteristic);
   }
 
 
@@ -133,30 +137,8 @@ public class GattClientCallback extends BluetoothGattCallback {
   }
 
 
-  private void readCharacteristic(BluetoothGattCharacteristic characteristic) {
-    byte[] receivedSegmentBytes = characteristic.getValue();
-    String receivedSegment = BleAndroidUtils.stringFromBytes(receivedSegmentBytes);
-    if (receivedSegment == null) {
-      LogWrapper.log (true,"Unable to read bytes from string");
-      return;
-    }
+  private void readCharacteristic(NetworkNode networkNode,BluetoothGattCharacteristic characteristic) {
+    bluetoothManager.processPackets(networkNode,characteristic.getValue());
 
-    LogWrapper.log(false, "Response received successfully");
-
-    /*if(receivedSegment.contains(DATA_SEGMENT_START)){
-      isWaitingForPackets = true;
-    }
-
-    if(isWaitingForPackets){
-      bluetoothManager.storeReceivedSegment(receivedSegment);
-    }else{
-      LogWrapper.log (false,"Received data: "+receivedSegment);
-    }
-
-    if(receivedSegment.contains(DATA_SEGMENT_END) && isWaitingForPackets){
-      bluetoothManager.sendCourseStatuses(bluetoothManager.getCombinedReceivedSegments());
-      LogWrapper.log(false, "Received Response:"+bluetoothManager.getCombinedReceivedSegments());
-      isWaitingForPackets = false;
-    }*/
   }
 }
