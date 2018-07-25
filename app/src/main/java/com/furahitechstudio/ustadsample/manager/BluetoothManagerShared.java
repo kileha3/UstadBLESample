@@ -1,12 +1,15 @@
 package com.furahitechstudio.ustadsample.manager;
 
 import com.furahitechstudio.ustadsample.models.NetworkNode;
+import com.furahitechstudio.ustadsample.utils.BleAndroidUtils;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.Vector;
+
+import static com.furahitechstudio.ustadsample.utils.BleAndroidUtils.compress;
 
 public abstract class BluetoothManagerShared {
 
@@ -18,11 +21,7 @@ public abstract class BluetoothManagerShared {
 
   public static final String CLIENT_CONFIGURATION_DESCRIPTOR_SHORT_ID = "2902";
 
-  public static final int MAXIMUM_DATA_CHUNK_SIZE = 20;
-
-  public static final String DATA_SEGMENT_START="start";
-
-  public static final String DATA_SEGMENT_END="end";
+  public static final byte ENTRY_STATUS_REQUEST = (byte) 200;
 
   public byte[][] BYTES_TO_BE_TRANSFERRED = null;
 
@@ -34,7 +33,7 @@ public abstract class BluetoothManagerShared {
 
   private StringBuilder stringBuilder = new StringBuilder();
 
-  private String dataToBeTransferred = "";
+  private String dataToTransfer = "";
 
   public abstract boolean isBleCapable();
 
@@ -55,27 +54,15 @@ public abstract class BluetoothManagerShared {
 
   public abstract void stopScanning();
 
-  public Integer getPacketSize(){
-    return (int) Math.ceil( dataToBeTransferred.getBytes().length / (double)MAXIMUM_DATA_CHUNK_SIZE);
+  public void setDataToTransfer(String dataToTransfer){
+    this.dataToTransfer = dataToTransfer;
   }
 
+ public byte [][] getPayload(){
+   return BleAndroidUtils.packetizePayload(ENTRY_STATUS_REQUEST,compress(dataToTransfer),20);
+ }
 
-  public void setStringDataToBeTransferred(String dataToBeTransferred){
-    this.dataToBeTransferred = dataToBeTransferred;
-    byte [] data = dataToBeTransferred.getBytes();
-    byte[][] packets = new byte[getPacketSize()][MAXIMUM_DATA_CHUNK_SIZE];
-    Integer start = 0;
-    for(int i = 0; i < packets.length; i++) {
-      int end = start+MAXIMUM_DATA_CHUNK_SIZE;
-      if(end > data.length){end = data.length;}
-      packets[i] = Arrays.copyOfRange(data,start, end);
-      start += MAXIMUM_DATA_CHUNK_SIZE;
-    }
-    BYTES_TO_BE_TRANSFERRED = packets;
-  }
-  public byte[][] getBytesToSend(){
-    return BYTES_TO_BE_TRANSFERRED;
-  }
+
 
   public void addNodeConfiguration(NetworkNode networkNode, byte[] value){
     mNetworkNodeConfigurations.put(networkNode.getBluetoothAddress(),value);
@@ -114,16 +101,6 @@ public abstract class BluetoothManagerShared {
     return mNetworkNodeConfigurations;
   }
 
-  public void storeReceivedSegment(String dataSegment){
-    stringBuilder.append(dataSegment);
-  }
-
-  public String getCombinedReceivedSegments(){
-    return stringBuilder
-        .toString()
-        .replace(DATA_SEGMENT_START,"")
-        .replace(DATA_SEGMENT_END,"");
-  }
 
   public abstract void destroy();
 }
