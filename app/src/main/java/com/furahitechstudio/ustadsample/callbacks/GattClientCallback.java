@@ -10,16 +10,12 @@ import com.furahitechstudio.ustadsample.utils.BleAndroidUtils;
 import com.furahitechstudio.ustadsample.utils.LogWrapper;
 import java.util.List;
 
-import static com.furahitechstudio.ustadsample.manager.BluetoothManagerShared.DATA_SEGMENT_END;
-import static com.furahitechstudio.ustadsample.manager.BluetoothManagerShared.DATA_SEGMENT_START;
 
 public class GattClientCallback extends BluetoothGattCallback {
 
   private BluetoothManagerShared bluetoothManager;
 
   private int packetIteration = 0;
-
-  private boolean isWaitingForPackets = false;
 
   @Override
   public void onMtuChanged(BluetoothGatt gatt, int mtu, int status) {
@@ -82,9 +78,9 @@ public class GattClientCallback extends BluetoothGattCallback {
   public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
     super.onCharacteristicWrite(gatt, characteristic, status);
     if (status == BluetoothGatt.GATT_SUCCESS) {
-
-      if(packetIteration < bluetoothManager.getPacketSize()){
-        characteristic.setValue(bluetoothManager.getBytesToSend()[packetIteration]);
+      byte[][] payload = bluetoothManager.getPayload();
+      if(packetIteration < payload.length){
+        characteristic.setValue(payload[packetIteration]);
         gatt.writeCharacteristic(characteristic);
         packetIteration++;
       }
@@ -145,7 +141,9 @@ public class GattClientCallback extends BluetoothGattCallback {
       return;
     }
 
-    if(receivedSegment.contains(DATA_SEGMENT_START)){
+    LogWrapper.log(false, "Response received successfully");
+
+    /*if(receivedSegment.contains(DATA_SEGMENT_START)){
       isWaitingForPackets = true;
     }
 
@@ -159,6 +157,6 @@ public class GattClientCallback extends BluetoothGattCallback {
       bluetoothManager.sendCourseStatuses(bluetoothManager.getCombinedReceivedSegments());
       LogWrapper.log(false, "Received Response:"+bluetoothManager.getCombinedReceivedSegments());
       isWaitingForPackets = false;
-    }
+    }*/
   }
 }
