@@ -21,17 +21,15 @@ public abstract class BluetoothManagerShared {
 
   public static final String CLIENT_CONFIGURATION_DESCRIPTOR_SHORT_ID = "2902";
 
-  public static final byte ENTRY_STATUS_REQUEST = (byte) 200;
+  public static final byte ENTRY_STATUS_REQUEST = (byte) 111;
 
-  public byte[][] BYTES_TO_BE_TRANSFERRED = null;
+  public static final byte ENTRY_STATUS_RESPONSE = (byte) 112;
 
   private Vector<NetworkNode> connectedNetworkNodes = new Vector<>();
 
   private Vector<NetworkNode> knownNetworkNodes = new Vector<>();
 
   private Map<String, byte[]> mNetworkNodeConfigurations = new HashMap<>();
-
-  private StringBuilder stringBuilder = new StringBuilder();
 
   private String dataToTransfer = "";
 
@@ -58,8 +56,8 @@ public abstract class BluetoothManagerShared {
     this.dataToTransfer = dataToTransfer;
   }
 
- public byte [][] getPayload(){
-   return BleAndroidUtils.packetizePayload(ENTRY_STATUS_REQUEST,compress(dataToTransfer),20);
+ public byte [][] getPayload(byte requestStatus){
+   return BleAndroidUtils.packetizePayload(requestStatus,compress(dataToTransfer),20);
  }
 
 
@@ -80,10 +78,12 @@ public abstract class BluetoothManagerShared {
 
   public abstract void requestCourseStatuses(String coursesIds);
 
-  public abstract void sendCourseStatuses(String courseResults);
+  public abstract void sendCourseStatuses(NetworkNode networkNode,String courseResults);
 
   public abstract void acknowledgeRequest(NetworkNode networkNode, int requestId, int status,
       int offset, byte[] value);
+
+  public abstract void processPackets(NetworkNode networkNode,byte [] value);
 
   public abstract void disconnectServer();
 
