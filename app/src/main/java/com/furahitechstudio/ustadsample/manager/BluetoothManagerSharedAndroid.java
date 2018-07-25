@@ -141,21 +141,20 @@ public class BluetoothManagerSharedAndroid extends BluetoothManagerShared implem
   }
 
   @Override public void requestCourseStatuses(String stringToSend) {
-    String stringRequest = DATA_SEGMENT_START+stringToSend+DATA_SEGMENT_END;
-    setStringDataToBeTransferred(stringRequest);
+    setDataToTransfer(stringToSend);
     BluetoothGattCharacteristic characteristic = BleAndroidUtils.findCourseServiceCharacteristics(mGatt);
     if (characteristic == null) {
       LogWrapper.log(true, "Failed to find characteristics");
       return;
     }
 
-    byte[] messageBytes = BleAndroidUtils.bytesFromString(stringRequest);
-    if (messageBytes.length == 0) {
+    if (stringToSend.length() == 0) {
       LogWrapper.log(true,"Failed to read bytes");
       return;
     }
 
-    characteristic.setValue(getPacketSize().toString().getBytes());
+    Integer payloadSize = BleAndroidUtils.depacketizePayload(getPayload()).length;
+    characteristic.setValue(payloadSize.toString().getBytes());
     boolean success = mGatt.writeCharacteristic(characteristic);
     boolean execute = mGatt.executeReliableWrite();
     if (success && execute) {
@@ -167,11 +166,11 @@ public class BluetoothManagerSharedAndroid extends BluetoothManagerShared implem
 
   @Override
   public void sendCourseStatuses(String courseResult) {
-    setStringDataToBeTransferred(courseResult);
+    setDataToTransfer(courseResult);
     BluetoothGattService service = mGattServer.getService(SERVICE_UUID);
     BluetoothGattCharacteristic characteristic = service.getCharacteristic(SERVICE_UUID);
     for (NetworkNode networkNode : getConnectedNodes()) {
-      if(packetIteration < getPacketSize()){
+      /*if(packetIteration < getPacketSize()){
         characteristic.setValue(getBytesToSend()[packetIteration]);
         boolean isConfirmationRequired = BleAndroidUtils.requiresConfirmation(characteristic);
         BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(networkNode.getBluetoothAddress());
@@ -179,7 +178,7 @@ public class BluetoothManagerSharedAndroid extends BluetoothManagerShared implem
           mGattServer.notifyCharacteristicChanged(device, characteristic, isConfirmationRequired);
         }
         packetIteration++;
-      }
+      }*/
     }
   }
 
