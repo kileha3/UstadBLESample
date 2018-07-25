@@ -7,26 +7,113 @@ import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattService;
 import android.support.annotation.Nullable;
 import com.furahitechstudio.ustadsample.models.NetworkNode;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 import static com.furahitechstudio.ustadsample.manager.BluetoothManagerShared.CLIENT_CONFIGURATION_DESCRIPTOR_SHORT_ID;
 import static com.furahitechstudio.ustadsample.manager.BluetoothManagerShared.SERVICE_STRING;
 
 public class BleAndroidUtils {
 
-  public static byte[] bytesFromString(String string) {
-    byte[] stringBytes = new byte[0];
+
+  public static byte[] compress(String string){
+    ByteArrayOutputStream os = new ByteArrayOutputStream(string.length());
+    byte[] compressed = new byte[]{};
+    try{
+      GZIPOutputStream gos = new GZIPOutputStream(os);
+      gos.write(string.getBytes());
+      gos.close();
+      compressed = os.toByteArray();
+      os.close();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+    return compressed;
+  }
+
+
+
+  public static String decompress(byte[] compressed){
+    final int BUFFER_SIZE = 32;
+    StringBuilder string = new StringBuilder();
+    ByteArrayInputStream is = new ByteArrayInputStream(compressed);
+    try{
+      GZIPInputStream gis = new GZIPInputStream(is, BUFFER_SIZE);
+      byte[] data = new byte[BUFFER_SIZE];
+      int bytesRead;
+      while ((bytesRead = gis.read(data)) != -1) {
+        string.append(new String(data, 0, bytesRead));
+      }
+      gis.close();
+      is.close();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+    return string.toString();
+  }
+
+  public static byte[][] packetizePayload(byte requestType, byte[] payload, int mtu){
+    int packetSize = (int) Math.ceil(payload.length / (double) mtu);
+    ByteBuffer headerBuffer = ByteBuffer.allocate(5);
+    byte[] header = headerBuffer.put(requestType).putInt(payload.length).array();
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     try {
-      stringBytes = string.getBytes("UTF-8");
-    } catch (UnsupportedEncodingException e) {
-      LogWrapper.log(true,"Failed to convert message string to byte array");
+      outputStream.write(header);
+      outputStream.write(payload);
+    } catch (IOException e) {
+      e.printStackTrace();
+      return new byte[][]{};
+    }
+    byte [] totalPayLoad = outputStream.toByteArray();
+    byte[][] packets = new byte[packetSize][mtu];
+    int start = 0;
+    for(int position = 0; position < packets.length; position++) {
+      int end = start + mtu;
+      if(end > totalPayLoad.length){end = totalPayLoad.length;}
+      packets[position] = Arrays.copyOfRange(totalPayLoad,start, end);
+      start += mtu;
     }
 
-    return stringBytes;
+    return packets;
   }
+
+  public static byte[] depacketizePayload(byte[][] packets){
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream( );
+    for(byte [] payLoad :packets){
+      try {
+        outputStream.write(payLoad);
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+    }
+    return outputStream.toByteArray();
+  }
+
+  public static byte getRequestType(byte [] payLoad){
+    return ByteBuffer.wrap(Arrays.copyOfRange(payLoad, 0, 1)).get();
+  }
+
+  public static int getContentLength(byte [] payLoad){
+    return ByteBuffer.wrap(Arrays.copyOfRange(payLoad, 1, 5)).getInt();
+  }
+
+  public static byte [] getActualPayLoad(byte [] payload){
+    if(payload != null){
+      return ByteBuffer.wrap(Arrays.copyOfRange(payload, 6, payload.length)).array();
+    }
+
+    return new byte[]{};
+  }
+
 
   @Nullable
   public static String stringFromBytes(byte[] bytes) {
