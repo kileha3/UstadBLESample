@@ -20,6 +20,10 @@ import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
 import static com.furahitechstudio.ustadsample.manager.BluetoothManagerShared.CLIENT_CONFIGURATION_DESCRIPTOR_SHORT_ID;
+import static com.furahitechstudio.ustadsample.manager.BluetoothManagerShared.ENTRY_ACQUISITION_REQUEST;
+import static com.furahitechstudio.ustadsample.manager.BluetoothManagerShared.ENTRY_ACQUISITION_RESPONSE;
+import static com.furahitechstudio.ustadsample.manager.BluetoothManagerShared.ENTRY_STATUS_REQUEST;
+import static com.furahitechstudio.ustadsample.manager.BluetoothManagerShared.ENTRY_STATUS_RESPONSE;
 import static com.furahitechstudio.ustadsample.manager.BluetoothManagerShared.SERVICE_STRING;
 
 public class BleAndroidUtils {
@@ -112,6 +116,12 @@ public class BleAndroidUtils {
     }
 
     return new byte[]{};
+  }
+
+
+  public static boolean isValidRequest(byte clientRequest){
+    return ENTRY_STATUS_REQUEST == clientRequest || ENTRY_STATUS_RESPONSE == clientRequest
+        || ENTRY_ACQUISITION_REQUEST == clientRequest || ENTRY_ACQUISITION_RESPONSE == clientRequest;
   }
 
 
