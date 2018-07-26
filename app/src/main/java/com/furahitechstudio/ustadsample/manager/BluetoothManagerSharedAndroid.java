@@ -22,10 +22,15 @@ import com.furahitechstudio.ustadsample.models.NetworkNode;
 import com.furahitechstudio.ustadsample.utils.BleAndroidUtils;
 import com.furahitechstudio.ustadsample.utils.LogWrapper;
 import java.io.ByteArrayOutputStream;
+import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
 
 import static android.content.Context.BLUETOOTH_SERVICE;
+import static com.furahitechstudio.ustadsample.utils.BleAndroidUtils.decompress;
+import static com.furahitechstudio.ustadsample.utils.BleAndroidUtils.isValidRequest;
+
 public class BluetoothManagerSharedAndroid extends BluetoothManagerShared implements BluetoothAdapter.LeScanCallback{
 
 
@@ -52,7 +57,7 @@ public class BluetoothManagerSharedAndroid extends BluetoothManagerShared implem
 
   private byte currentRequestType;
 
-  private ByteArrayOutputStream outputStream = null;
+  private ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
 
 
   public BluetoothManagerSharedAndroid(Activity mActivity){
@@ -148,41 +153,43 @@ public class BluetoothManagerSharedAndroid extends BluetoothManagerShared implem
     }
   }
 
-  @Override public void requestCourseStatuses(String stringToSend) {
-    setDataToTransfer(stringToSend);
+  @Override public void sendRequestToSuperNode(String requestContent, byte requestType) {
+    setDataToTransfer(requestContent);
+    setCurrentRequestType(requestType);
     BluetoothGattCharacteristic characteristic = BleAndroidUtils.findCourseServiceCharacteristics(mGatt);
     if (characteristic == null) {
       LogWrapper.log(true, "Failed to find characteristics");
       return;
     }
 
-    if (stringToSend.length() == 0) {
+    if (requestContent.length() == 0) {
       LogWrapper.log(true,"Failed to read bytes");
       return;
     }
 
-    Integer payloadSize = BleAndroidUtils.depacketizePayload(getPayload(ENTRY_STATUS_REQUEST)).length;
+    Integer payloadSize = BleAndroidUtils.depacketizePayload(getPayload(requestType)).length;
     characteristic.setValue(payloadSize.toString().getBytes());
     boolean success = mGatt.writeCharacteristic(characteristic);
     boolean execute = mGatt.executeReliableWrite();
     if (success && execute) {
-      LogWrapper.log(false, "Course requested successfully");
+      LogWrapper.log(false, "Request sent successfully");
     } else {
-      LogWrapper.log(true, "Failed to request course status");
+      LogWrapper.log(true, "Request failed");
     }
   }
 
   @Override
-  public void sendCourseStatuses(NetworkNode networkNode,String courseResult) {
-    setDataToTransfer(courseResult);
+  public void sendResponseToClient(NetworkNode networkNode,String responseContent,byte requestType) {
+    setDataToTransfer(responseContent);
+    setCurrentRequestType(requestType);
     BluetoothGattService service = mGattServer.getService(SERVICE_UUID);
     BluetoothGattCharacteristic characteristic = service.getCharacteristic(SERVICE_UUID);
-    int payloadLength = getPayload(ENTRY_STATUS_RESPONSE).length;
+    int payloadLength = getPayload(requestType).length;
     BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(networkNode.getBluetoothAddress());
     boolean isConfirmationRequired = BleAndroidUtils.requiresConfirmation(characteristic);
 
     for(int packetIteration = 0; packetIteration < payloadLength; packetIteration++){
-      characteristic.setValue(getPayload(ENTRY_STATUS_RESPONSE)[packetIteration]);
+      characteristic.setValue(getPayload(requestType)[packetIteration]);
       if (isResponseEnabled(device, characteristic)) {
         mGattServer.notifyCharacteristicChanged(device, characteristic, isConfirmationRequired);
       }
@@ -202,9 +209,9 @@ public class BluetoothManagerSharedAndroid extends BluetoothManagerShared implem
   @Override public void processPackets(NetworkNode networkNode, byte[] value) {
     byte clientRequest = BleAndroidUtils.getRequestType(value);
     byte [] actualPayLoad = null;
-    if(ENTRY_STATUS_REQUEST == clientRequest || ENTRY_STATUS_RESPONSE == clientRequest){
-      LogWrapper.log(false, "Requesting received");
-      outputStream = new ByteArrayOutputStream();
+
+    if(isValidRequest(clientRequest) && outputStream.size() <= 0){
+      LogWrapper.log(false, "New Request received");
       isWaitingForExtraPackets = true;
       currentRequestType = clientRequest;
       contentLength = BleAndroidUtils.getContentLength(value);
@@ -214,7 +221,6 @@ public class BluetoothManagerSharedAndroid extends BluetoothManagerShared implem
     if(isWaitingForExtraPackets && outputStream!=null){
       outputStream.write(value, 0, value.length);
       actualPayLoad = BleAndroidUtils.getActualPayLoad(outputStream.toByteArray());
-      LogWrapper.log(false, "Content-Length: "+contentLength+" Payload-Length: "+actualPayLoad.length);
     }
 
 
@@ -223,19 +229,45 @@ public class BluetoothManagerSharedAndroid extends BluetoothManagerShared implem
       if(contentLength == actualPayLoad.length){
         switch (currentRequestType){
           case ENTRY_STATUS_REQUEST:
-            LogWrapper.log(false,"Entry status request completed:\n"+BleAndroidUtils.decompress(actualPayLoad));
+            //Request received on server device from client requesting entry status
             String [] entryIds = BleAndroidUtils.decompress(actualPayLoad).split(",");
             StringBuilder stringBuilder = new StringBuilder();
             for (String entryId : entryIds) {
               stringBuilder.append("T");
             }
-            sendCourseStatuses(networkNode,stringBuilder.toString());
+            isWaitingForExtraPackets = false;
+            LogWrapper.log(false,"Sending entry statuses: "+stringBuilder.toString());
+            sendResponseToClient(networkNode,stringBuilder.toString(),ENTRY_STATUS_RESPONSE);
             break;
 
           case ENTRY_STATUS_RESPONSE:
-            LogWrapper.log(false,"Entry status response received\n"+BleAndroidUtils.decompress(actualPayLoad));
+            //Reply from the server device on entry status request
+            LogWrapper.log(false,"Entry statues response received: "+decompress(actualPayLoad));
+            String acquireCommand = "AcquireAllIhave";
+            isWaitingForExtraPackets = false;
+            LogWrapper.log(false,"Sending entry acquisition request: "+acquireCommand);
+            sendRequestToSuperNode(acquireCommand, ENTRY_ACQUISITION_REQUEST);
+            break;
+
+          case ENTRY_ACQUISITION_REQUEST:
+            //Request from client device to get WiFi groupID and passphrase
+            LogWrapper.log(false,"Entry acquisition request received: "+decompress(actualPayLoad));
+            String groupID = "UstadWIFiName";
+            String groupPassphrase = "87@-09379?Password";
+            isWaitingForExtraPackets = false;
+            String response = groupID+","+groupPassphrase;
+            LogWrapper.log(false, "Sending network credentials: "+response);
+            sendResponseToClient(networkNode,response,ENTRY_ACQUISITION_RESPONSE);
+            break;
+
+          case ENTRY_ACQUISITION_RESPONSE:
+            //Reply from server device on acquisition request
+            LogWrapper.log(false,"Network credential received: "+decompress(actualPayLoad));
+            isWaitingForExtraPackets = false;
+            disconnectServer();
             break;
         }
+        outputStream.reset();
 
       }
     }
