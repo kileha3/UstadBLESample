@@ -80,13 +80,14 @@ public class GattClientCallback extends BluetoothGattCallback {
   public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
     super.onCharacteristicWrite(gatt, characteristic, status);
     if (status == BluetoothGatt.GATT_SUCCESS) {
-      byte[][] payload = bluetoothManager.getPayload(ENTRY_STATUS_REQUEST);
+      byte[][] payload = bluetoothManager.getPayload(bluetoothManager.getRequestType());
       if(packetIteration < payload.length){
         characteristic.setValue(payload[packetIteration]);
         gatt.writeCharacteristic(characteristic);
         packetIteration++;
+      }else{
+        packetIteration = 0;
       }
-      LogWrapper.log(false,"Characteristic written successfully");
     } else {
       LogWrapper.log(true,"Characteristic write not written, status: " + status);
       bluetoothManager.disconnectServer();
@@ -108,7 +109,6 @@ public class GattClientCallback extends BluetoothGattCallback {
   @Override
   public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
     super.onCharacteristicChanged(gatt, characteristic);
-    LogWrapper.log(false,"Characteristic modified, " + characteristic.getUuid().toString());
     NetworkNode networkNode = BleAndroidUtils.getNetworkNode(gatt.getDevice());
     readCharacteristic(networkNode,characteristic);
   }
@@ -138,6 +138,5 @@ public class GattClientCallback extends BluetoothGattCallback {
 
   private void readCharacteristic(NetworkNode networkNode,BluetoothGattCharacteristic characteristic) {
     bluetoothManager.processPackets(networkNode,characteristic.getValue());
-
   }
 }

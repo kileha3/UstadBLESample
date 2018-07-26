@@ -9,6 +9,7 @@ import android.bluetooth.BluetoothProfile;
 import com.furahitechstudio.ustadsample.manager.BluetoothManagerShared;
 import com.furahitechstudio.ustadsample.utils.BleAndroidUtils;
 import com.furahitechstudio.ustadsample.utils.LogWrapper;
+import java.io.UnsupportedEncodingException;
 
 import static com.furahitechstudio.ustadsample.manager.BluetoothManagerShared.CLIENT_CONFIGURATION_DESCRIPTOR_UUID;
 import static com.furahitechstudio.ustadsample.manager.BluetoothManagerShared.SERVICE_UUID;
@@ -54,7 +55,6 @@ public class GattServerCallback extends BluetoothGattServerCallback {
         responseNeeded, offset, value);
 
     if (SERVICE_UUID.equals(characteristic.getUuid())) {
-      LogWrapper.log(false, "onCharacteristicWriteRequest for "+characteristic.getUuid().toString());
       bluetoothManager.acknowledgeRequest(BleAndroidUtils.getNetworkNode(device), requestId, BluetoothGatt.GATT_SUCCESS, 0, null);
       bluetoothManager.processPackets(BleAndroidUtils.getNetworkNode(device),value);
     }

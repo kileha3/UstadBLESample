@@ -7,6 +7,8 @@ import android.widget.Button;
 import com.furahitechstudio.ustadsample.manager.BluetoothManagerSharedAndroid;
 import com.furahitechstudio.ustadsample.utils.LogWrapper;
 
+import static com.furahitechstudio.ustadsample.manager.BluetoothManagerShared.ENTRY_STATUS_REQUEST;
+
 public class MainActivity extends AppCompatActivity {
 
   private String sample_ops_ids =
@@ -68,7 +70,7 @@ public class MainActivity extends AppCompatActivity {
         LogWrapper.log(false, "sending "
             +sample_ops_ids.getBytes().length+" bytes"+" "
             +(sample_ops_ids.split(",")).length+" ids");
-        bluetoothImpl.requestCourseStatuses(sample_ops_ids);
+        bluetoothImpl.sendRequestToSuperNode(sample_ops_ids,ENTRY_STATUS_REQUEST);
       }
     });
 
