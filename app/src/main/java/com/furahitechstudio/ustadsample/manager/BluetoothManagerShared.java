@@ -25,6 +25,12 @@ public abstract class BluetoothManagerShared {
 
   public static final byte ENTRY_STATUS_RESPONSE = (byte) 112;
 
+  public static final byte ENTRY_ACQUISITION_REQUEST = (byte) 113;
+
+  public static final byte ENTRY_ACQUISITION_RESPONSE = (byte) 114;
+
+  private byte requestType;
+
   private Vector<NetworkNode> connectedNetworkNodes = new Vector<>();
 
   private Vector<NetworkNode> knownNetworkNodes = new Vector<>();
@@ -74,9 +80,9 @@ public abstract class BluetoothManagerShared {
 
   public abstract void connectToServerDevice(NetworkNode networkNode);
 
-  public abstract void requestCourseStatuses(String coursesIds);
+  public abstract void sendRequestToSuperNode(String requestContent, byte requestType);
 
-  public abstract void sendCourseStatuses(NetworkNode networkNode,String courseResults);
+  public abstract void sendResponseToClient(NetworkNode networkNode,String responseContent, byte requestType);
 
   public abstract void acknowledgeRequest(NetworkNode networkNode, int requestId, int status,
       int offset, byte[] value);
@@ -84,6 +90,14 @@ public abstract class BluetoothManagerShared {
   public abstract void processPackets(NetworkNode networkNode,byte [] value);
 
   public abstract void disconnectServer();
+
+  public void setCurrentRequestType(byte requestType){
+    this.requestType = requestType;
+  }
+
+  public byte getRequestType(){
+    return requestType;
+  }
 
   public abstract void stopService();
 
